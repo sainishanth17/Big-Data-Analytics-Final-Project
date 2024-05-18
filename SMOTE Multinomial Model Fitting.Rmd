@@ -1,0 +1,150 @@
+---
+title: "SMOTE Multinomial Model Fitting"
+author: "Alyzeh Jiwani"
+date: "25/07/2022"
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+We will now repeat the entire process of post feature selection and multinomial model fitting with our new, larger, datasets containing our synthesised data.
+From our process of feature selection that we did in our Python Notebook, we already saw a slight improvement in our decsion tree model accuracy scores. Our hope is that we will see an improvement in the effectiveness of our multinomial model as well.
+
+```{r}
+SData_Current <- read.csv('/Users/alyzehjiwani/Downloads/Data/Final Data Used/SMOTE_data.csv')
+SData_Gap_Train <- read.csv('//Users/alyzehjiwani/Downloads/Data/Final Data Used/Year_Gap_SMOTE_Train_data.csv')
+SData_Gap_Test <- read.csv('/Users/alyzehjiwani/Downloads/Data/Final Data Used/Crime_Data_Year_Gap_Test.csv')
+```
+
+## Post Feature Selection
+
+From our analysis using decision trees and permutation fetaure importance in python, we are able to now remove some features that are unlikely to contribute to our to our models.
+
+For SMOTE_data, where the values for a ll the features and our response variable crime_rate are taken in the same year, we decided to keep the following features:
+Com_House, Child_Care, Emp_Res and Pop
+
+For df_2, where values for features are taken three years prior to values for our response variable crime_rate, the features we have decided to keep are:
+Inflation, Year, Emp_Res, Pop and Com_House
+
+```{r}
+SData_Current <- SData_Current[,c('Com_House','Child_Care','Pop','Emp_Res','C_Rate')]
+SData_Gap_Train <- SData_Gap_Train[,c('Inflation', 'Year', 'Com_House', 'Pop','Emp_Res', 'C_Rate')]
+SData_Gap_Test <-SData_Gap_Test[,c('Inflation', 'Year', 'Com_House', 'Pop','Emp_Res')]
+```
+
+We will now try to fit the data to a multinomial regression model
+
+```{r}
+library(nnet)
+library(caret)
+```
+
+Working with SData_Current:
+
+Splitting into Train/Test
+```{r}
+index <- createDataPartition(SData_Current$C_Rate, p = 0.7, list = FALSE)
+train <- SData_Current[index,]
+test <- SData_Current[-index,]
+```
+
+```{r}
+model_Scur_1 <- multinom(C_Rate~., data = SData_Current)
+
+summary(model_Scur_1)
+```
+
+```{r}
+exp(coef(model_Scur_1))
+```
+
+These are the probabilities of neighbourhoods being having a particular crime rate level
+```{r}
+head(round(fitted(model_Scur_1),3))
+```
+
+We now want to see what the accuracy of the model is.
+
+```{r}
+train$C_RatePred <- predict(model_Scur_1, newdata = train, 'class')
+tab <- table(train$C_Rate, train$C_RatePred)
+tab
+```
+
+Now we calculate accuracy
+
+```{r}
+round((sum(diag(tab))/sum(tab))*100,2)
+```
+
+Our accuracy is at a value of 50.21, which is higher than our original value of 42.75
+
+We now predict on the test dataset and see our classification table
+
+```{r}
+test$C_RatePred <- predict(model_Scur_1, newdata = test, "class")
+
+
+tab_test <- table(test$C_Rate, test$C_RatePred)
+tab_test
+```
+
+accuracy of test model
+```{r}
+round((sum(diag(tab_test))/sum(tab_test))*100,2)
+```
+Again, this is higher than our original value of 40.42
+
+
+We now repeat this for the data where values of our features are taken three years prior to the values of our response variable.
+
+
+
+```{r}
+model_Sgap_1 <- multinom(C_Rate~., data = SData_Gap_Train)
+
+summary(model_Sgap_1)
+```
+
+```{r}
+exp(coef(model_Sgap_1))
+```
+
+These are the probabilities of neighbourhoods being having a particular crime rate level
+```{r}
+head(round(fitted(model_Sgap_1),3))
+```
+
+
+We now want to see what the accuracy of the model is.
+
+```{r}
+SData_Gap_Train$C_RatePred <- predict(model_Sgap_1, newdata = SData_Gap_Train, 'class')
+tab_gap <- table(SData_Gap_Train$C_Rate, SData_Gap_Train$C_RatePred)
+tab_gap
+```
+
+
+Now we calculate accuracy
+
+```{r}
+round((sum(diag(tab_gap))/sum(tab_gap))*100,2)
+```
+Our accuracy for this model is slightly better at 54.69
+
+We now predict on the test dataset. 
+```{r}
+SData_Gap_Test$C_RatePred <- predict(model_Sgap_1, newdata = SData_Gap_Test, "class")
+
+head(SData_Gap_Test$C_RatePred)
+```
+
+Our values for accuracy have improved using the synthesized data.
+
+
+
+
+

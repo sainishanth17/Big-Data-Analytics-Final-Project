@@ -1,0 +1,331 @@
+---
+title: "CIND 820 - EDA Data Visualisation"
+author: "Alyzeh Jiwani"
+date: "07/06/2022"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+First we read in our dataframe
+
+```{r}
+crime_data <- read.csv('/Users/alyzehjiwani/Downloads/Data/Final Data Used/pandas_df.csv', header = TRUE)
+```
+ We look at the head  of our data and summary stats
+ 
+```{r}
+head(crime_data)
+```
+
+```{r}
+summary(crime_data)
+```
+
+We already checked and treated for missing values so we will move on with data visualisation.
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+```
+
+```{r}
+bp1 <- ggplot(crime_data, aes(x=Year, y = C_Rate, group = Year))+
+  geom_boxplot(aes(fill = Year))
+bp1
+```
+ So looking at this we can see that the total crime rate inreased significantly in 2021.
+ 
+ Looking at how crime rate is affected more closely
+ Instead of faceting by year and NID, we will facet by Year and NIA, this is because there are too many different neighbourhood IDs, and the NIA measure is an effective way for us to see whether being an at risk neighbourhood affects crime rate.
+ 
+```{r}
+bp2 <- ggplot(crime_data[crime_data$NIA == 0,], aes(x= Year, y=C_Rate, group = Year))+
+  geom_boxplot(aes(fill=Year))
+bp2
+bp3 <- ggplot(crime_data[crime_data$NIA == 1,], aes(x= Year, y=C_Rate, group = Year))+
+  geom_boxplot(aes(fill=Year))
+bp3
+```
+
+
+The data from the year 2021 seems to be somewhat of an outlier, a likely outcome of covid and high inflation rates.
+Lets try to see what the spread of the data looks like without data from 2021.
+
+```{r}
+bp4 <- ggplot(crime_data[crime_data$Year != 2021,], aes(x= Year, y=C_Rate, group = Year))+
+  geom_boxplot(aes(fill=Year))+
+  facet_grid(~NIA)
+bp4
+```
+
+Intrestingly enough, the general spread and average rate of crime appears to be somewhat the same regardless of NIA assignment, however there are many outliers past the upper bounds in neighbourhoods that are not NIAs.This could be atributed to the fat that neighbourhoods that are considered NIAs may have higher police presence, or even the general similarity in crime rates may be attributed to spill over from other neighbourhoods.
+
+Lets look at associations between different variables.
+```{r}
+df <- crime_data[-1]
+head(df)
+```
+
+
+```{r}
+cor(df)
+```
+
+None of our have a high correlation (correlation coeeficient >0.7) with each other, and thus we do not remove any as of yet
+
+
+```{r}
+ggplot(df[df$Year != 2021,], aes(x = Year, y= C_Rate, colour = Inflation))+
+  geom_jitter()+
+  facet_grid(~NIA)
+```
+```{r}
+ggplot(df, aes(x= Ad_Ed, y = Emp_Res, colour = Year))+
+  geom_jitter()
+```
+mild positive association between adult education facilities and employment resources. this is likely because the two services are probable to be placed in the same places as one would assume that accessing adult education would lead to being able to start looking for a job
+
+likewise the mild association between adult education and recreation could be inferred as being a result of how adult education services are likely to be placed in areas where other recreation facilities exist.
+
+```{r}
+ggplot(df, aes(x= Ad_Ed, y = Recreation, colour = Year))+
+  geom_jitter()
+```
+
+```{r}
+ggplot(df, aes(x = Com_House, y = C_Rate, colour = NIA))+
+  geom_jitter()
+```
+
+```{r}
+ggplot(df, aes(x= Sub_Trt, y = C_Rate, colour = NIA))+
+  geom_jitter()
+
+```
+
+From visualising our data and getting a better picture of what is going on, there are a few conclusions I have made.
+  1) Further changes to my data are needed. I feel that I may need to transform the other count data into rates to more accurately access how much they contribute to the response variable
+  2) I also need to incorporate more demographic data per neighbourhood. This is a little trickier to incorporate into my data as this data is only collected every 5 years, and thus doesnt give an accurate picture of what is going on in each neighbourhood each year.
+  3) This issue could be solved by expanding the time span of my study, however another obstacle that comes up when we do this is that the data collected by the city of toronto is no longer consistent. Different variables and different measures of each neighbourhood are taken and this makes it hard to accurately assess what exactly causes high and low crime rates.
+  
+That being said, it may be easier to find relationships between crime rate and neighbourhood resources when measurements are taken years apart.
+
+```{r}
+df_2014 <- df[df$Year == 2014,]
+df_2015 <- df[df$Year == 2015,]
+df_2016 <- df[df$Year == 2016,]
+df_2017 <- df[df$Year == 2017,]
+df_2018 <- df[df$Year == 2018,]
+df_2019 <- df[df$Year == 2019,]
+df_2020 <- df[df$Year == 2020,]
+df_2021 <- df[df$Year == 2021,]
+
+```
+
+```{r}
+ggplot(df_2014, aes(x = df_2014$Child_Care, y = df_2019$C_Rate, colour = df_2014$NIA))+
+  geom_jitter()
+```
+
+Here we can see that there is somewhat of a negative association. Where 2014 Child Care resources were low, 5 years later those same neighbourhoods had the highest crime rates. Likewise when there were ample child care resources in a neighbourhood, we an see that none of those data points were extremely high
+
+```{r}
+cor(df_2014$Child_Care, df_2019$C_Rate)
+```
+
+```{r}
+ggplot(df_2014, aes(x = df_2014$Com_House, y =df_2019$C_Rate, colour = NIA))+
+  geom_jitter()
+cor(df_2014$Com_House, df_2019$C_Rate)
+```
+
+```{r}
+ggplot(df_2014, aes(x = Ad_Ed, y = df_2019$C_Rate, colour = NIA))+
+  geom_jitter()
+cor(df_2014$Ad_Ed, df_2019$C_Rate)
+```
+
+Looking at these results I can conclude the following:
+  1) The data paints a clearer picture of association when the response variable crime rate is looked some time (in this case five years) after the counts of the variables are collected. This makes sense as resources often need time to be implemented effectively and make an impact on their communities.
+  2) I would still try to obtain some more data on the individual neighbourhoods although, as mentioned earlier, this will be tricky due to consistency issues.
+  
+## Initial Results and Code
+
+As discussed in our literature review, we will first try to assess the association of resources avaialble within each neighbourhood and its crime rate. We initially wanted to look at this in 5 year increments (resources available in year X vs crime rate in year X+5) however, due to data availability we will reduce this to three year increments.
+
+We will look at the distribution of our target variable
+
+```{r}
+ggplot(df, aes(df$C_Rate))+
+  geom_histogram(aes(y = ..density..),fill = 'pink')+
+  geom_density()+
+  facet_grid(~Year)
+```
+
+
+We will try to apply a multinomial linear regression
+
+
+```{r}
+model_1 <- glm(df_2020$C_Rate ~ df_2017$Child_Care + df_2017$Com_House + df_2017$Ad_Ed + df_2017$Emp_Res + df_2017$Recreation + df_2017$Sub_Trt, data = df_2020)
+summary(model_1)
+```
+So here we can see that recreation and adult education are highly significant, whilst employment resources are slightly significant
+
+
+what if we played arounbd with the gap of time between the responce and each attribute?
+
+```{r}
+model_2 <- glm(df_2020$C_Rate ~ df_2014$Child_Care + df_2017$Com_House + df_2017$Ad_Ed + df_2017$Emp_Res + df_2018$Recreation + df_2014$Sub_Trt, data = df_2020)
+```
+
+```{r}
+summary(model_2)
+```
+
+employment resources plays a more sgnificant role in this model when time between recreation facilties and time at which the response is measured is reduced.
+
+```{r}
+model_3 <- glm(df_2020$C_Rate ~ df_2017$Ad_Ed + df_2017$Emp_Res + df_2017$Recreation)
+summary(model_3)
+```
+
+We want to check the normality of the residuals to ensure that our results are valid
+
+```{r}
+plot(model_3)
+```
+
+```{r}
+hist(model_3$residuals)
+```
+
+```{r}
+boxplot(model_3$residuals)
+```
+we will preform the  Kolmogorov-Smirnov  test on the residuals
+
+```{r}
+library(dgof)
+```
+
+```{r}
+set.seed(1)
+norm_dist <- rnorm(50)
+ks.test(norm_dist, model_3$residuals)
+```
+our p-value is very small --> so we should reject our null hypothesis that the two distributions are equal as there is sufficient evidence to suggest that the distribution of our residuals is not normal
+
+unfortunately this means that we cannot use a multinomial linear regression.
+
+Our next step is to use the Schapiro Wilk Test to test the normality of our dependent variable (crime rate)
+
+```{r}
+library(dplyr)
+library(ggpubr)
+```
+
+```{r}
+shapiro.test(df$C_Rate)
+```
+our p-value is very small, giving us sufficient evidence to suggest that our dependent variable Y is not normally distributed.
+
+First we will investigate
+
+We will now employ feature selection to reduce the dimensionality of our data.
+
+
+We will try to transform our depndent variable from a continuous numerical variable to a categorical variable.
+
+```{r}
+qs <- quantile(df$C_Rate,c(0,0.1,0.35,0.5,0.65,0.9,1.0))
+qs
+```
+
+```{r}
+library(gtools)
+df_new <- df
+```
+Now we turn C_Rate into a factor variable with the levels 'Very Low' (10th quantile), 'Low'(between 10th and 35th quantile),'Medium'(between 35th and 65th quantile),'High' (between 65th and 90th quantile) and 'Very High' (above the 90th quantile)
+```{R}
+df_new$C_Rate <- quantcut(df_new$C_Rate, c(0,0.1,0.35,0.5,0.65,0.9,1.0))
+```
+
+```{r}
+levels(df_new$C_Rate)<- c('Very Low', 'Low', 'Medium', 'Medium', 'High', 'Very High')
+```
+
+Here we can explore two models.
+We can create one model where features and crime rate are from the same year, and one model where there is a three year gap between features and crime rate.
+
+df_new is the data frame we will use to create the model where features and crime rate are both values from the same year. Here we can implement a 70/30 train/test split as we will have crime rate data available for every data instance.
+
+The second model, df_2, where there is a 3 year gap between features and crime rate will have a 62.5/37.5 train/test split. This is because we have BOTH feature and crime rate data up until the feature year/ crime rate year combination of 2018/2021. For feature values in the year 2019 onwards there is no crime rate data available as that data hasnt been collected yet.
+
+```{r}
+df_2 <- df_new
+```
+
+```{r}
+df_2[df_2$Year==2014,]$C_Rate <-df_new[df_new$Year==2017,]$C_Rate
+df_2[df_2$Year==2015,]$C_Rate <-df_new[df_new$Year==2018,]$C_Rate
+df_2[df_2$Year==2016,]$C_Rate <-df_new[df_new$Year==2019,]$C_Rate
+df_2[df_2$Year==2017,]$C_Rate <-df_new[df_new$Year==2020,]$C_Rate
+df_2[df_2$Year==2018,]$C_Rate <-df_new[df_new$Year==2021,]$C_Rate
+```
+
+```{r}
+df_2_train <- df_2[df_2$Year %in% c(2014,2015,2016,2017,2018),]
+df_2_test <- df_2[df_2$Year %in% c(2019,2020,2021), !names(df_2) %in% c('C_Rate')]
+```
+
+```{r}
+dim(df_2)
+dim(df_2_test)
+dim(df_2_train)
+```
+
+We already implemented filter feature selection methods earlier see if we could reduce the dimensionality of our data. We will now apply wrapping methods to see if we can reduce dimensionality further.
+
+```{r}
+library(caret)
+library(class)
+library(mlbench)
+library(base)
+```
+
+For df_new:
+
+We will construct a Learning Vector QUantization model to estimate variable importance.LVQ is a classification algorithm and can be used for both binary and multiclass problems.
+
+```{r}
+set.seed(7)
+control <- trainControl(method = 'repeatedcv', number = 10, repeats = 3)
+model <- train(C_Rate~., data = df_new, method = 'lvq', preProcess = 'scale', trControl = control)
+importance <- varImp(model, scale = FALSE)
+print(importance)
+plot(importance)
+```
+
+
+For df_2:
+
+```{r}
+
+set.seed(7)
+control <- trainControl(method = 'repeatedcv', number = 10, repeats = 3)
+model <- train(C_Rate~., data = df_2_train, method = 'lvq', preProcess = 'scale', trControl = control)
+importance <- varImp(model, scale = FALSE)
+print(importance)
+plot(importance)
+
+```
+```{r}
+write.csv(df_new, '/Users/alyzehjiwani/Downloads/Data/Final Data Used/Crime_Data.csv')
+write.csv(df_2_train, '/Users/alyzehjiwani/Downloads/Data/Final Data Used/Crime_Data_Year_Gap_Train.csv')
+write.csv(df_2_test, '/Users/alyzehjiwani/Downloads/Data/Final Data Used/Crime_Data_Year_Gap_Test.csv')
+```
+

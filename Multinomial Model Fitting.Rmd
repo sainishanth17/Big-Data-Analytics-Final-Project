@@ -1,0 +1,135 @@
+---
+title: "Post feature Selection"
+author: "Alyzeh Jiwani"
+date: "27/06/2022"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Post Feature Selection
+
+From our analysis using decision trees and permutation fetaure importance in python, we are able to now remove some features that are unlikely to contribute to our to our models.
+
+For df_new, where the values for a ll the features and our response variable crime_rate are taken in the same year, we decided to keep the following features:
+Com_House, Child_Care, Pop
+
+For df_2, where values for features are taken three years prior to values for our response variable crime_rate, the features we have decided to keep are:
+Inflation, Recreation, Com_House, Pop,Emp_Res and Child_Care
+
+```{r}
+Data_Current <- read.csv('/Users/alyzehjiwani/Downloads/Data/Final Data Used/Crime_Data.csv')
+Data_Current <- Data_Current[,c('Com_House','Child_Care','Pop','C_Rate')]
+Data_Gap_Train <- read.csv('//Users/alyzehjiwani/Downloads/Data/Final Data Used/Crime_Data_Year_Gap_Train.csv')
+Data_Gap_Test <- read.csv('//Users/alyzehjiwani/Downloads/Data/Final Data Used/Crime_Data_Year_Gap_Test.csv')
+Data_Gap_Train <- Data_Gap_Train[,c('Inflation','Recreation','Com_House','Child_Care','Pop','Emp_Res','C_Rate')]
+Data_Gap_Test <- Data_Gap_Test[,c('Inflation','Recreation','Com_House','Child_Care','Pop','Emp_Res')]
+```
+
+We will now try to fit the data to a multinomial regression model
+
+```{r}
+library(nnet)
+library(caret)
+```
+
+Splitting into Train/Test
+```{r}
+index <- createDataPartition(Data_Current$C_Rate, p = 0.7, list = FALSE)
+train <- Data_Current[index,]
+test <- Data_Current[-index,]
+```
+
+```{r}
+model_cur_1 <- multinom(C_Rate~., data = Data_Current)
+
+summary(model_cur_1)
+```
+
+```{r}
+exp(coef(model_cur_1))
+```
+
+These are the probabilities of neighbourhoods being having a particular crime rate level
+```{r}
+head(round(fitted(model_cur_1),3))
+```
+
+We now want to see what the accuracy of the model is.
+
+```{r}
+train$C_RatePred <- predict(model_cur_1, newdata = train, 'class')
+tab <- table(train$C_Rate, train$C_RatePred)
+tab
+```
+
+Now we calculate accuracy
+
+```{r}
+round((sum(diag(tab))/sum(tab))*100,2)
+```
+
+Our accuracy is at a value of 41.98.
+
+We now predict on the test dataset and see our classification table
+
+```{r}
+test$C_RatePred <- predict(model_cur_1, newdata = test, "class")
+
+
+tab_test <- table(test$C_Rate, test$C_RatePred)
+tab_test
+```
+
+accuracy of train model
+```{r}
+round((sum(diag(tab_test))/sum(tab_test))*100,2)
+```
+We now repeat this for the data where values of our features are taken three years prior to the values of our response variable.
+
+```{r}
+model_gap_1 <- multinom(C_Rate~., data = Data_Gap_Train)
+
+summary(model_gap_1)
+```
+
+```{r}
+exp(coef(model_gap_1))
+```
+
+These are the probabilities of neighbourhoods being having a particular crime rate level
+```{r}
+head(round(fitted(model_gap_1),3))
+```
+
+
+We now want to see what the accuracy of the model is.
+
+```{r}
+Data_Gap_Train$C_RatePred <- predict(model_gap_1, newdata = Data_Gap_Train, 'class')
+tab_gap <- table(Data_Gap_Train$C_Rate, Data_Gap_Train$C_RatePred)
+tab_gap
+```
+
+
+Now we calculate accuracy
+
+```{r}
+round((sum(diag(tab_gap))/sum(tab_gap))*100,2)
+```
+Our accuracy for this model is slightly better at 52.93
+
+We now predict on the test dataset. We cannot make a classification table as we have no actual values to compare the predicted values to.
+
+```{r}
+head(predict(model_gap_1, newdata = Data_Gap_Test, "class"))
+
+```
+
+
+Our values for accuracy are fairly low. This is likely to be primarily due to our lack of data points but can also be a result of class imbalance in the dataset (This would be tough to fix as we cannot change the number of high/low/etc level crime rate neighbourhoods). It is also likely that our inability to source demographic information for each data point is a large contributing factor. While we can see that the features we have chosen here are relevant to our response variable, it can be hypothesised that demographic information is a key element in predicting the crime rates of neighbourhoods, especially features that are poverty indicators such as average household size, income, unemployment rate, etc. Without these, our data is lacking important context.
